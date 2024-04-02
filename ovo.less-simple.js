@@ -7,7 +7,6 @@ let spx=0;
 let url = "https://smartpaymapi.ovoenergy.com/usage/api/half-hourly/";
 let errLgin = x => o('<b>ERROR:</b> [<a href="https://account.ovoenergy.com/">CLICK HERE to sign into your Ovo account first.</a>]');
 let errLoc = x => o('<b>ERROR:</b> <a href="https://smartpaymapi.ovoenergy.com/">CLICK HERE to go to the website</a> then ignore the onscreen message and use the bookmark again.');
-// https://smartpaymapi.ovoenergy.com/usage/api/daily/{acct}}?date=2024-02 for the month
 
 (async ()=>{
     setup();
@@ -42,7 +41,7 @@ async function main(mPast=0) {
     let total427 = 0; total = 0;
     let dow=fdld.fdom;
     let year=fdld.year;
-    let mth=pad(fdld.month);
+    let month=pad(fdld.month);
     let bhDays = 0;
     let bhShow = [];
     let daysUsedToCalc = 0;
@@ -50,11 +49,11 @@ async function main(mPast=0) {
     let dataContinues = true;   // next field of result specifies if there are remaining days
 
     l("Month: ", fdld.mthName);
-    o("Month: "+fdld.mthName);
+    o("Month: "+fdld.mthName+" "+fdld.year+ " peak hours " + fdld.peakTimeStart + " to " + fdld.peakTimeEnd);
 
     for (i = 1; i <= fdld.ldom && dataContinues; i++, dow = ++dow%7) {
         if (dow>0 && dow<6) {
-            dts = `${year}-${mth}-`+pad(i);
+            dts = `${year}-${month}-`+pad(i);
             if (bhdates.includes(dts)) {
                 l(dts + " bank holiday " + bhEvents[dts]);
                 bhDays++;
@@ -92,7 +91,7 @@ async function main(mPast=0) {
                     let d2d = new Date(ed[hh].interval.start);
                     let tsh = d2d.getHours();
                     if (d2d.getTimezoneOffset() != 0) tsh++;
-                    if (tsh >= 16 && tsh < 19)
+                    if (tsh >= fdld.peakTimeStart && tsh < fdld.peakTimeEnd)
                         e427Tot+=ed[hh].consumption;
                 }
                 total += dayTot; total427+=e427Tot;
@@ -107,15 +106,22 @@ async function main(mPast=0) {
     o(lm); o("&nbsp;");
 }
 
-function firstday_lastday(mthOffset=0) {
+function firstday_lastday(mthOffset = 0) {
     let date = new Date();
-    let first = new Date(date.getFullYear(), date.getMonth() -mthOffset, 1);
-    let last = new Date(date.getFullYear(), date.getMonth() -mthOffset + 1, 0);
+        // note zero based, 3 is April
+    let first = new Date(date.getFullYear(), date.getMonth() - mthOffset, 1);
+    let last = new Date(date.getFullYear(), date.getMonth() - mthOffset + 1, 0);
+
+    let [peakTimeStart, peakTimeEnd] = first >= new Date(2024,3) ? [18,21] : [16,19];
+
     let p =  {
         fdom: first.getDay(),
         ldom: last.getDate(),
         month: first.getMonth() + 1,
-        mthName: first.toLocaleString('default', { month: 'long' }), year: first.getFullYear()}
+        mthName: first.toLocaleString('default', { month: 'long' }), year: first.getFullYear(),
+        peakTimeStart,
+        peakTimeEnd
+    }
     return p;
 }
 
