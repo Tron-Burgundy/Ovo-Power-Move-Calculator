@@ -8,6 +8,8 @@ let url = "https://smartpaymapi.ovoenergy.com/usage/api/half-hourly/";
 let errLgin = x => o('<b>ERROR:</b> [<a href="https://account.ovoenergy.com/">CLICK HERE to sign into your Ovo account first.</a>]');
 let errLoc = x => o('<b>ERROR:</b> <a href="https://smartpaymapi.ovoenergy.com/">CLICK HERE to go to the website</a> then ignore the onscreen message and use the bookmark again.');
 
+const MONTHS_TO_CALC = 4;
+
 (async ()=>{
     setup();
 
@@ -31,7 +33,7 @@ let errLoc = x => o('<b>ERROR:</b> <a href="https://smartpaymapi.ovoenergy.com/"
     }
 
     o("Press F12 for more info");
-    for(let m=0; m<6; m++)
+    for(let m=0; m<MONTHS_TO_CALC; m++)
         await main(m);
 })();
 
@@ -44,38 +46,47 @@ async function main(mPast=0) {
     let month=pad(fdld.month);
     let bhDays = 0;
     let bhShow = [];
-    let daysUsedToCalc = 0;
+    //let daysUsedToCalc = 0;
     let daysFailed = 0;
     let dataContinues = true;   // next field of result specifies if there are remaining days
 
     l("Month: ", fdld.mthName);
-    o("Month: "+fdld.mthName+" "+fdld.year+ " peak hours " + fdld.peakTimeStart + " to " + fdld.peakTimeEnd);
+    o("Month: "+fdld.mthName+" "+fdld.year+ ",  peak hours : " + fdld.peakTimeStart + " to " + fdld.peakTimeEnd);
 
     for (i = 1; i <= fdld.ldom && dataContinues; i++, dow = ++dow%7) {
+        if (new Date(fdld.year, fdld.month-1, i) >= Date.now()) {
+            console.log("Ending calcs for the month.  Date is >= today", Date.now(), new Date(fdld.year, fdld.month-1, i));
+            break;
+        }
+
+        dts = `${year}-${month}-`+pad(i);
+
+        let furl=url+dts;
+        data = await fetch(furl);   // ok: true or status: 200 check
+        if (data.ok !== true) {
+            daysFailed++;
+            l("bad response for", furl)
+            continue;
+        }
+
+        spin();
+        let json = await data.json();
+
+        dataContinues = (json.electricity !== undefined && json.electicity !== null && undefined !== json.electricity.next) ? json.electricity.next : false;
+        if (!dataContinues) console.log("DATA ENDS for the month "+dts);
+
         if (dow>0 && dow<6) {
-            dts = `${year}-${month}-`+pad(i);
             if (bhdates.includes(dts)) {
                 l(dts + " bank holiday " + bhEvents[dts]);
                 bhDays++;
                 bhShow.push(bhEvents[dts]);
+                // javascript STILL NEEDS to be checked for next
                 continue;
             }
-            daysUsedToCalc++;
-
-            let furl=url+dts;
-            data = await fetch(furl);   // ok: true or status: 200 check
-            if (data.ok !== true) {
-                daysFailed++;
-                l("bad response for", furl)
-                continue;
-            }
-
-            spin();
-            let json = await data.json();
+            //daysUsedToCalc++;
 
             if (json.electricity) {
                 let ed = json.electricity.data;
-                dataContinues = json.electricity.next;
 
                 if (ed instanceof Array == false) {
                     daysFailed++;
@@ -101,7 +112,8 @@ async function main(mPast=0) {
             } else l("Nooo for " + dts);
         }
     }
-    let lm = `TOTAL ${(total427/total * 100).toFixed(2)}%  [${total427.toFixed(3)} / ${total.toFixed(3)}] - bank holidays: ${bhDays} `+bhShow.join(", ");
+    let mPercent = total > 0 ? (total427/total * 100).toFixed(2) + "%": "Not enough data yet...";
+    let lm = `TOTAL = ${mPercent}  [${total427.toFixed(3)} / ${total.toFixed(3)}]kWh - bank holidays: ${bhDays} `+bhShow.join(", ");
     l(lm);l();
     o(lm); o("&nbsp;");
 }
