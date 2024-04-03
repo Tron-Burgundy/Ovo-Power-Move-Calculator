@@ -5,8 +5,8 @@ let gid = x=>document.getElementById(x);
 let bhdates=[]; let bhEvents = {};
 let spx=0;
 let url = "https://smartpaymapi.ovoenergy.com/usage/api/half-hourly/";
-let errLgin = x => o('<b>ERROR:</b> [<a href="https://account.ovoenergy.com/">CLICK HERE to sign into your Ovo account first.</a>]');
-let errLoc = x => o('<b>ERROR:</b> <a href="https://smartpaymapi.ovoenergy.com/">CLICK HERE to go to the website</a> then ignore the onscreen message and use the bookmark again.');
+let errLgin = x => o('<b>Part 1 of 3:</b> [<a href="https://account.ovoenergy.com/">CLICK HERE to sign into your Ovo account</a>] <b>then click the bookmark again.</b>');
+let errLoc = x => o('<b>Part 2 of 3:</b> <a href="https://smartpaymapi.ovoenergy.com/">CLICK HERE</a> then Part 3/3 <strong>Click the Bookmark again</strong>');
 
 const MONTHS_TO_CALC = 4;
 
