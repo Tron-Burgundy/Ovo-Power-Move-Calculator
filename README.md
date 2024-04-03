@@ -9,7 +9,7 @@ click the bookmark and you'll get a result like
 
 The first figure is the total used during the peak slot, the second the total for the day and then the percentage used during the slot.
 
-The [Monthly peak usage calculator bookmark](https://github.com/Tron-Burgundy/Ovo-Power-Move-Calculator/blob/main/ovo-monthly-calc-bookmarklet.txt) contains code you can *paste into a bookmark* that'll try and calculate your peak usage for entire months.  
+The [Monthly peak usage calculator bookmark](https://github.com/Tron-Burgundy/Ovo-Power-Move-Calculator/blob/main/ovo-monthly-calc-bookmarklet.txt) contains code you can **paste into a bookmark** that'll try and calculate your peak usage for entire months.  
 
 To use it you must:
 
