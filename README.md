@@ -30,5 +30,5 @@ To use it you must:
 - Click the bookmarklet again.  Now your calculations should happen.
 
 
-The [.js file](https://github.com/Tron-Burgundy/Ovo-Power-Move-Calculator/blob/main/ovo.monthly-peak-calculator.js) contains the un-minifed code for the month calculator.  If you press F12 on the [Smartapi site](https://smartpaymapi.ovoenergy.com/) you can paste the code for it into the console tab and run it like that rather than use a bookmark.
+The [.js file](https://github.com/Tron-Burgundy/Ovo-Power-Move-Calculator/blob/main/ovo.monthly-peak-calculator.js) contains the un-minifed code for the month calculator.  If you press F12 you can paste the code into console to run it that way.
 
