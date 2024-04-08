@@ -14,8 +14,8 @@ The [Monthly peak usage calculator bookmark](https://github.com/Tron-Burgundy/Ov
 To use it you must:
 
 - Sign into your Ovo online account
-- Click the bookmarklet which will show you a link to take you to the smartapi site
-- Click the link shown onscreen.
+- Click the bookmarklet which will display a link to take you to a blank website.
+- Click the bookmark again, this will grab bank holiday info and take you back to Ovo.
 - Click the bookmarklet again.  Now your calculations should happen.
 
 If you click the bookmark and all the results are "Not enough data" then log out of your Ovo account and sign in again [The Ovo login page](https://my.ovoenergy.com/login) then click the bookmark again or refresh the page if it's open.
