@@ -7,7 +7,7 @@ To use it sign into your Ovo account, click the bookmark, wait a sec then click 
 
 If you click the bookmark and all the results are "Not enough data" then log out of your Ovo account and sign in again [The Ovo login page](https://my.ovoenergy.com/login) then click the bookmark again or refresh the page if it's open.
 
-*note:* zone in the link can be changed to "scotland" and "northern-ireland"
+**Note:** zone in the link can be changed to "scotland" and "northern-ireland"
 
 ---
 
