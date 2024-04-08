@@ -7,7 +7,7 @@ To use it sign into your Ovo account, click the bookmark, wait a sec then click 
 
 If you click the bookmark and all the results are "Not enough data" then log out of your Ovo account and sign in again [The Ovo login page](https://my.ovoenergy.com/login) then click the bookmark again or refresh the page if it's open.
 
-**note:** zone in the link can be changed to "scotland" and "northern-ireland"
+*note:* zone in the link can be changed to "scotland" and "northern-ireland"
 ---
 The **daily** bookmarklet text file *[ovo-daily-usage-page-bookmarklet.txt](https://github.com/Tron-Burgundy/Ovo-Power-Move-Calculator/blob/main/ovo-daily-usage-page-bookmarklet.txt "ovo-daily-usage-page-bookmarklet.txt")* contains code you can paste into a browser bookmark which will show you a day's peak usage when clicked while viewing a day's usage on the Ovo site,
 
