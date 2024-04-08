@@ -1,68 +1,135 @@
+"use strict"
 let zone = "england-and-wales";// scotland northern-ireland
+const MONTHS_TO_CALC = 4;
+
+let API_URL = "https://smartpaymapi.ovoenergy.com/usage/api/half-hourly/";
+const BH_SITE_PROXY = "https://blank.org/";
+const OVO_RETURN_URL = "https://account.ovoenergy.com/usage?fuel=electricity";
+const BH_DATA_URL = "https://www.gov.uk/bank-holidays.json";
+
 let l = console.log;
 let pad = a => ("0"+a).slice(-2);
 let gid = x=>document.getElementById(x);
-let bhdates=[]; let bhEvents = {};
-let spx=0;
-let url = "https://smartpaymapi.ovoenergy.com/usage/api/half-hourly/";
-let errLgin = x => o('<b>Part 1 of 3:</b> [<a href="https://account.ovoenergy.com/">CLICK HERE to sign into your Ovo account</a>] <b>then click the bookmark again.</b>');
-let errLoc = x => o('<b>Part 2 of 3:</b> <a href="https://smartpaymapi.ovoenergy.com/">CLICK HERE</a> then Part 3/3 <strong>Click the Bookmark again</strong>');
+let bhdates={};// let bhEvents = {};
 
-const MONTHS_TO_CALC = 4;
+let errLgin = x => o('<b>Part 1 of 3:</b> [<a href="https://account.ovoenergy.com/">CLICK HERE to sign into your Ovo account</a>] <b>then click the bookmark again.</b>');
+
+// let goToOtherSiteMsg = x => o('<b>To remote get bank holidays click the link and click the boommark button again.:</b> <a href="https://smartpaymapi.ovoenergy.com/">CLICK HERE</a> then Part 3/3 <strong>Click the Bookmark again</strong>');
+
+let spx = 0;    // spinner on/off state
+let xDiv, acctid;   // spinner div
 
 (async ()=>{
-    setup();
+    if (window.location.host !== "account.ovoenergy.com") {
+        let bh = await get_bank_holidays();
 
-    if (!set_acct_num()) {errLgin(); return;}
-    if (window.location.host != "smartpaymapi.ovoenergy.com") {errLoc(); return;}
-
-    url=url+acctid+"?date=";
-
-    try {
-        let bhr = await fetch("https://www.gov.uk/bank-holidays.json");
-        if (bhr.ok) {
-            let bh = await bhr.json();
-            for (let d of bh[zone].events) {
-                bhdates.push(d.date);
-                bhEvents[d.date] = d.title;
-            }
-            l("got bank holidays")
+        if (!bh) {
+            //o("Failed to fetch bank holidays.");
+            window.location.href = OVO_RETURN_URL;
+            return;
         }
-    } catch (e) {
-        o("Can't process bank holidays")
+
+        let redir = OVO_RETURN_URL + "&bh=" + encodeURIComponent(JSON.stringify(bhdates));
+        window.location.href = redir;
+        return;
+    }
+
+    setup_divs();
+
+    if (window.location.host == "account.ovoenergy.com" && !set_acct_num()) {
+        errLgin();
+        return;
     }
 
     o("Press F12 for more info");
-    for(let m=0; m<MONTHS_TO_CALC; m++)
+    l("Account id is fine");
+
+    API_URL = API_URL + acctid + "?date=";
+
+    if (!await get_bank_holidays() ) { // go to the bank holiday page
+        redirect_prompt();
+        return;
+    }
+
+    for(let m = 0; m < MONTHS_TO_CALC; m++)
         await main(m);
 })();
+
+    // offers a link to a site where the bank holiday json can be aquired
+
+function redirect_prompt() {
+    o("Click the link below and then use the saved bookmark on the blank page.");
+    o("You'll then be returned to Ovo where you must use the bookmark again.");
+    o('<a href="' + BH_SITE_PROXY + '">CLICK HERE, use the bookmark, then use it again on your return.</a>');
+    o('&nbsp;');
+    o("Bank holiday data makes the Power Move calculations more accurate.")
+}
+
+// should break this into 2 but I'm a bad programmer
+
+async function get_bank_holidays() {
+    try {
+        let bhr = await fetch(BH_DATA_URL);
+        if (bhr.ok) {
+            let bh = await bhr.json();
+            for (let d of bh[zone].events) {
+                //bhdates.push(d.date);
+                //bhEvents[d.date] = d.title;
+                bhdates[d.date] = d.title;
+            }
+            l("got bank holidays")
+
+            return true;
+        }
+    } catch (e) {
+        //o("<div>&nbsp;</div><b>Can't process bank holidays directly...</b>");
+    }
+
+    let qs = new window.URLSearchParams( window.location.search );
+    let token = qs.get("bh");
+
+    if (token === null) return false;
+    // are bank holidays in the thing
+    try {
+        bhdates = JSON.parse(token);
+        //o("SUCCESS: Got bank holidays from the link address.");
+    } catch (error) {
+        //o("ERROR getting the bank holidays from the link");
+        return false;
+    }
+
+    //o("&nbsp;");
+    return true;
+}
+
 
 async function main(mPast=0) {
     let fdld = firstday_lastday(mPast);
 
-    let total427 = 0; total = 0;
+    let total427 = 0, total = 0;
     let dow=fdld.fdom;
     let year=fdld.year;
     let month=pad(fdld.month);
     let bhDays = 0;
     let bhShow = [];
-    //let daysUsedToCalc = 0;
     let daysFailed = 0;
     let dataContinues = true;   // next field of result specifies if there are remaining days
 
     l("Month: ", fdld.mthName);
     o("Month: "+fdld.mthName+" "+fdld.year+ ",  peak hours : " + fdld.peakTimeStart + " to " + fdld.peakTimeEnd);
 
-    for (i = 1; i <= fdld.ldom && dataContinues; i++, dow = ++dow%7) {
+    for (let i = 1; i <= fdld.ldom && dataContinues; i++, dow = ++dow%7) {
         if (new Date(fdld.year, fdld.month-1, i) >= Date.now()) {
             console.log("Ending calcs for the month.  Date is >= today", Date.now(), new Date(fdld.year, fdld.month-1, i));
             break;
         }
 
-        dts = `${year}-${month}-`+pad(i);
+        let dts = `${year}-${month}-`+pad(i);
 
-        let furl=url+dts;
-        data = await fetch(furl);   // ok: true or status: 200 check
+        let furl = API_URL + dts;
+
+        let data = await fetch(furl, { credentials: "include" });
+
         if (data.ok !== true) {
             daysFailed++;
             l("bad response for", furl)
@@ -76,14 +143,13 @@ async function main(mPast=0) {
         if (!dataContinues) console.log("DATA ENDS for the month "+dts);
 
         if (dow>0 && dow<6) {
-            if (bhdates.includes(dts)) {
-                l(dts + " bank holiday " + bhEvents[dts]);
+            if ( bhdates[dts] ) {
+                l(dts + " bank holiday " + bhdates[dts]);
                 bhDays++;
-                bhShow.push(bhEvents[dts]);
+                bhShow.push(bhdates[dts]);
                 // javascript STILL NEEDS to be checked for next
                 continue;
             }
-            //daysUsedToCalc++;
 
             if (json.electricity) {
                 let ed = json.electricity.data;
@@ -96,7 +162,7 @@ async function main(mPast=0) {
                 if (ed.length != 48) {
                     l(dts, "1/2 hourly data length not 48: ", ed.length);
                 }
-                e427Tot = 0; dayTot = 0;
+                let e427Tot = 0, dayTot = 0;
                 for(let hh=0; hh<ed.length; hh++) {
                     dayTot+=ed[hh].consumption;
                     let d2d = new Date(ed[hh].interval.start);
@@ -141,7 +207,7 @@ function set_acct_num(){
     let c = Object.fromEntries(document.cookie.split('; ').map(c => c.split('=')));
     let v = c.mp_457e7322cdf0dcb51030b6a3bafd8805_mixpanel;
     if (v !== undefined) {
-        acct = JSON.parse( decodeURIComponent(v) )
+        let acct = JSON.parse( decodeURIComponent(v) )
         acctid = acct["Account Id"];
         if (acctid)
             return true;
@@ -151,15 +217,15 @@ function set_acct_num(){
 
 function o() {
     for(let q of arguments){
-        nd=document.createElement("div"); nd.innerHTML=q;
+        let nd = document.createElement("div"); nd.innerHTML = q;
         msgs.append(nd);
     }
 }
 
-function setup(){
+function setup_divs(){
     document.body.innerHTML = '<div>Working: [<span id="X">+</span>]<p><div id="msgs"></div></div>';
-    mDiv=gid("msgs");
-    xDiv=gid("X");
+    //mDiv=gid("msgs");
+    xDiv = gid("X");
 }
 
 function spin() {
