@@ -14,8 +14,6 @@ let bhdates={};// let bhEvents = {};
 
 let errLgin = x => o('<b>Part 1 of 3:</b> [<a href="https://account.ovoenergy.com/">CLICK HERE to sign into your Ovo account</a>] <b>then click the bookmark again.</b>');
 
-// let goToOtherSiteMsg = x => o('<b>To remote get bank holidays click the link and click the boommark button again.:</b> <a href="https://smartpaymapi.ovoenergy.com/">CLICK HERE</a> then Part 3/3 <strong>Click the Bookmark again</strong>');
-
 let spx = 0;    // spinner on/off state
 let xDiv, acctid;   // spinner div
 
@@ -68,14 +66,19 @@ function redirect_prompt() {
 // should break this into 2 but I'm a bad programmer
 
 async function get_bank_holidays() {
+    let dateHi = new Date();
+    let dateLow = new Date();
+    dateLow.setMonth( dateLow.getMonth() - MONTHS_TO_CALC - 1 );
+    dateHi.setMonth( dateHi.getMonth() + 1 );
+
     try {
         let bhr = await fetch(BH_DATA_URL);
         if (bhr.ok) {
             let bh = await bhr.json();
             for (let d of bh[zone].events) {
-                //bhdates.push(d.date);
-                //bhEvents[d.date] = d.title;
-                bhdates[d.date] = d.title;
+                let dobh = new Date(d.date);
+                if (dobh > dateLow && dobh < dateHi)
+                    bhdates[d.date] = d.title;
             }
             l("got bank holidays")
 
