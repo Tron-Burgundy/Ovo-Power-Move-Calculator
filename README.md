@@ -20,15 +20,9 @@ click the bookmark and you'll get a result like
 
 The first figure is the total used during the peak slot, the second the total for the day and then the percentage used during the slot.
 
-There is an alternative version of the [Monthly peak usage calculator bookmark](https://github.com/Tron-Burgundy/Ovo-Power-Move-Calculator/blob/main/ovo-monthly-calc-bookmarklet.txt) that can be used if the website glitch.com is offline.
+There is an alternative version of the [Monthly peak usage calculator bookmark](https://github.com/Tron-Burgundy/Ovo-Power-Move-Calculator/blob/main/ovo-ONE-CLICK-monthly-calc-bookmarklet.txt) that does everything in one click.
 
-To use it you must:
-
-- Sign into your Ovo online account
-- Click the bookmarklet which will display a link to take you to a blank website.
-- Click the bookmark again, this will grab bank holiday info and take you back to Ovo.
-- Click the bookmarklet again.  Now your calculations should happen.
-
+It's good but note that you can't get calculations earlier than June 23 or later than November 2024.  I'll more than likely update it before then to account for peak time changes.
 
 The [.js file](https://github.com/Tron-Burgundy/Ovo-Power-Move-Calculator/blob/main/ovo.monthly-peak-calculator.js) contains the un-minifed code for the month calculator.  If you press F12 you can paste the code into console to run it that way.
 
