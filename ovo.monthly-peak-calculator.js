@@ -1,40 +1,31 @@
 "use strict"
+{
 let zone = "england-and-wales";// scotland northern-ireland
-const MONTHS_TO_CALC = 4;
+const MONTHS_TO_CALC = 4;   // how far to go back.  Don't go back earlier than 2023-06-01
+    // dates useful to December 24.  I'll have to edit by then for the next set of peak hours
+let bhdates = {"2023-08-28":"Summer bank holiday","2023-12-25":"Christmas Day","2023-12-26":"Boxing Day","2024-01-01":"New Year’s Day","2024-03-29":"Good Friday","2024-04-01":"Easter Monday","2024-05-06":"Early May bank holiday","2024-05-27":"Spring bank holiday","2024-08-26":"Summer bank holiday"};
 
 let API_URL = "https://smartpaymapi.ovoenergy.com/usage/api/half-hourly/";
-const BH_SITE_PROXY = "https://blank.org/";
-const OVO_RETURN_URL = "https://account.ovoenergy.com/usage?fuel=electricity";
-const BH_DATA_URL = "https://www.gov.uk/bank-holidays.json";
+const OVO_RETURN_URL    = "https://account.ovoenergy.com/usage?fuel=electricity";
 
 let l = console.log;
 let pad = a => ("0"+a).slice(-2);
 let gid = x=>document.getElementById(x);
-let bhdates={};// let bhEvents = {};
 
-let errLgin = x => o('<b>Part 1 of 3:</b> [<a href="https://account.ovoenergy.com/">CLICK HERE to sign into your Ovo account</a>] <b>then click the bookmark again.</b>');
+let errLgin = x => o('[<a href="https://account.ovoenergy.com/">CLICK HERE to sign into your Ovo account</a>] <b>then click the bookmark again.</b>');
 
 let spx = 0;    // spinner on/off state
 let xDiv, acctid;   // spinner div
 
 (async ()=>{
     if (window.location.host !== "account.ovoenergy.com") {
-        let bh = await get_bank_holidays();
-
-        if (!bh) {
-            //o("Failed to fetch bank holidays.");
-            window.location.href = OVO_RETURN_URL;
-            return;
-        }
-
-        let redir = OVO_RETURN_URL + "&bh=" + encodeURIComponent(JSON.stringify(bhdates));
-        window.location.href = redir;
+        window.location.href = OVO_RETURN_URL;
         return;
     }
 
     setup_divs();
 
-    if (window.location.host == "account.ovoenergy.com" && !set_acct_num()) {
+    if (!set_acct_num()) {
         errLgin();
         return;
     }
@@ -44,75 +35,21 @@ let xDiv, acctid;   // spinner div
 
     API_URL = API_URL + acctid + "?date=";
 
-    if (!await get_bank_holidays() ) { // go to the bank holiday page
-        redirect_prompt();
-        return;
-    }
-
     for(let m = 0; m < MONTHS_TO_CALC; m++)
         await main(m);
 })();
 
-    // offers a link to a site where the bank holiday json can be aquired
 
-function redirect_prompt() {
-    o("Click the link below and then use the saved bookmark on the blank page.");
-    o("You'll then be returned to Ovo where you must use the bookmark again.");
-    o('<a href="' + BH_SITE_PROXY + '">CLICK HERE, use the bookmark, then use it again on your return.</a>');
-    o('&nbsp;');
-    o("Bank holiday data makes the Power Move calculations more accurate.")
-}
-
-// should break this into 2 but I'm a bad programmer
-
-async function get_bank_holidays() {
-    let dateHi = new Date();
-    let dateLow = new Date();
-    dateLow.setMonth( dateLow.getMonth() - MONTHS_TO_CALC - 1 );
-    dateHi.setMonth( dateHi.getMonth() + 1 );
-
-    try {
-        let bhr = await fetch(BH_DATA_URL);
-        if (bhr.ok) {
-            let bh = await bhr.json();
-            for (let d of bh[zone].events) {
-                let dobh = new Date(d.date);
-                if (dobh > dateLow && dobh < dateHi)
-                    bhdates[d.date] = d.title;
-            }
-            l("got bank holidays")
-
-            return true;
-        }
-    } catch (e) {
-        //o("<div>&nbsp;</div><b>Can't process bank holidays directly...</b>");
-    }
-
-    let qs = new window.URLSearchParams( window.location.search );
-    let token = qs.get("bh");
-
-    if (token === null) return false;
-    // are bank holidays in the thing
-    try {
-        bhdates = JSON.parse(token);
-        //o("SUCCESS: Got bank holidays from the link address.");
-    } catch (error) {
-        //o("ERROR getting the bank holidays from the link");
-        return false;
-    }
-
-    //o("&nbsp;");
-    return true;
-}
+    /* The calculator for each month */
 
 
-async function main(mPast=0) {
-    let fdld = firstday_lastday(mPast);
+async function main(monthsInPast = 0) {
+    let fdld = firstday_lastday(monthsInPast);
 
     let total427 = 0, total = 0;
-    let dow=fdld.fdom;
-    let year=fdld.year;
-    let month=pad(fdld.month);
+    let dow = fdld.fdom;    // day of week = first day of month
+    let year = fdld.year;
+    let month = pad(fdld.month);
     let bhDays = 0;
     let bhShow = [];
     let daysFailed = 0;
@@ -142,15 +79,14 @@ async function main(mPast=0) {
         spin();
         let json = await data.json();
 
-        dataContinues = (json.electricity !== undefined && json.electicity !== null && undefined !== json.electricity.next) ? json.electricity.next : false;
+        dataContinues = json.electricity?.next ?? false;
         if (!dataContinues) console.log("DATA ENDS for the month "+dts);
 
-        if (dow>0 && dow<6) {
+        if (dow > 0 && dow < 6) {
             if ( bhdates[dts] ) {
                 l(dts + " bank holiday " + bhdates[dts]);
                 bhDays++;
                 bhShow.push(bhdates[dts]);
-                // javascript STILL NEEDS to be checked for next
                 continue;
             }
 
@@ -166,7 +102,7 @@ async function main(mPast=0) {
                     l(dts, "1/2 hourly data length not 48: ", ed.length);
                 }
                 let e427Tot = 0, dayTot = 0;
-                for(let hh=0; hh<ed.length; hh++) {
+                for ( let hh=0; hh<ed.length; hh++) {
                     dayTot+=ed[hh].consumption;
                     let d2d = new Date(ed[hh].interval.start);
                     let tsh = d2d.getHours();
@@ -234,4 +170,6 @@ function setup_divs(){
 function spin() {
     spx=!spx;
     xDiv.innerText = spx?'◉':"◎";
+}
+
 }
