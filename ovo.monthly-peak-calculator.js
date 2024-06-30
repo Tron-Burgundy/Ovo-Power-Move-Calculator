@@ -1,9 +1,15 @@
+/*  "One click" version of the script that has baked in bank holiday data
+
+    July 2024 Update as weekends count as off peak
+
+    Bank holiday data good for 2024 up to DEC 23rd
+*/
 "use strict"
 {
 let zone = "england-and-wales";// scotland northern-ireland
 const MONTHS_TO_CALC = 4;   // how far to go back.  Don't go back earlier than 2023-06-01
     // dates useful to December 24.  I'll have to edit by then for the next set of peak hours
-let bhdates = {"2023-08-28":"Summer bank holiday","2023-12-25":"Christmas Day","2023-12-26":"Boxing Day","2024-01-01":"New Year’s Day","2024-03-29":"Good Friday","2024-04-01":"Easter Monday","2024-05-06":"Early May bank holiday","2024-05-27":"Spring bank holiday","2024-08-26":"Summer bank holiday"};
+let bhdates = {"2024-01-01":"New Year’s Day","2024-03-29":"Good Friday","2024-04-01":"Easter Monday","2024-05-06":"Early May bank holiday","2024-05-27":"Spring bank holiday","2024-08-26":"Summer bank holiday"};
 
 let API_URL = "https://smartpaymapi.ovoenergy.com/usage/api/half-hourly/";
 const OVO_RETURN_URL    = "https://account.ovoenergy.com/usage?fuel=electricity";
@@ -40,85 +46,119 @@ let xDiv, acctid;   // spinner div
 })();
 
 
+
+    // summing function for entire day's energy
+function get_day_tot(jData) {
+    let dayTot = 0;
+    for ( let halfHrIdx = 0; halfHrIdx < jData.length; halfHrIdx++) {
+        dayTot += jData[halfHrIdx].consumption;
+    }
+    return dayTot;
+}
+
+
     /* The calculator for each month */
 
 
 async function main(monthsInPast = 0) {
     let fdld = firstday_lastday(monthsInPast);
 
-    let total427 = 0, total = 0;
-    let dow = fdld.fdom;    // day of week = first day of month
+    let totalMthPeak = 0, totalMthAll = 0;
+    let dow = fdld.firstDayOfMonth;    // day of week = first day of month
     let year = fdld.year;
     let month = pad(fdld.month);
     let bhDays = 0;
     let bhShow = [];
     let daysFailed = 0;
-    let dataContinues = true;   // next field of result specifies if there are remaining days
+    let dataContinues = true;   // "next" field of result specifies if there are remaining days
 
     l("Month: ", fdld.mthName);
-    o("Month: "+fdld.mthName+" "+fdld.year+ ",  peak hours : " + fdld.peakTimeStart + " to " + fdld.peakTimeEnd);
+    o(`Month: ${fdld.mthName} ${fdld.year}, peak hours: ${fdld.peakTimeStart} to ${fdld.peakTimeEnd}`);
 
-    for (let i = 1; i <= fdld.ldom && dataContinues; i++, dow = ++dow%7) {
+        // summing fn for day's peak energy
+    let get_peak_tot = jData => {
+        let peakTot = 0;
+        for ( let halfHrIdx = 0; halfHrIdx < jData.length; halfHrIdx++) {
+            let halfHourToDate = new Date(jData[halfHrIdx].interval.start);
+            let halfHourHour = halfHourToDate.getHours();
+            if (halfHourToDate.getTimezoneOffset() != 0) halfHourHour++;
+
+            if (halfHourHour >= fdld.peakTimeStart && halfHourHour < fdld.peakTimeEnd) {
+                peakTot += jData[halfHrIdx].consumption;
+            }
+        }
+        return peakTot;
+    }
+
+        // loop through the month
+    for (let i = 1; i <= fdld.lastDayOfMonth && dataContinues; i++, dow = ++dow%7) {
         if (new Date(fdld.year, fdld.month-1, i) >= Date.now()) {
-            console.log("Ending calcs for the month.  Date is >= today", Date.now(), new Date(fdld.year, fdld.month-1, i));
+            l("Ending calcs for the month.  Date is >= today", Date.now(), new Date(fdld.year, fdld.month-1, i));
             break;
         }
 
-        let dts = `${year}-${month}-`+pad(i);
-
-        let furl = API_URL + dts;
-
-        let data = await fetch(furl, { credentials: "include" });
+        let dateToString = `${year}-${month}-`+pad(i);
+        let dataUrl = API_URL + dateToString;
+        let data = await fetch(dataUrl, { credentials: "include" });
 
         if (data.ok !== true) {
             daysFailed++;
-            l("bad response for", furl)
+            l("bad response for", dataUrl)
             continue;
         }
 
         spin();
         let json = await data.json();
+            // so far next=false occurs on pages with an empty data=[] array for electricity
+        dataContinues = json?.electricity?.next ?? false;
+        if (!dataContinues) l("DATA ENDS for the month " + dateToString);
 
-        dataContinues = json.electricity?.next ?? false;
-        if (!dataContinues) console.log("DATA ENDS for the month "+dts);
+        if (! json.electricity) {
+            l("No electricity data for " + dateToString);
+            continue;
+        }
 
-        if (dow > 0 && dow < 6) {
-            if ( bhdates[dts] ) {
-                l(dts + " bank holiday " + bhdates[dts]);
-                bhDays++;
-                bhShow.push(bhdates[dts]);
-                continue;
+        let ed = json.electricity.data;
+
+        if (ed instanceof Array === false || ed.length === 0) {
+            daysFailed++;
+            l("1/2 hourly data is empty or not an array", ed);
+            continue;
+        }
+
+        if (ed.length != 48) {
+            l(dateToString, "1/2 hourly data length not 48: ", ed.length);
+        }
+
+            // NOTE: bank holidays are ditched.  They don't count to off-peak
+
+        if ( bhdates[dateToString] ) {
+            l(dateToString + " bank holiday " + bhdates[dateToString]);
+            bhDays++;
+            bhShow.push(bhdates[dateToString]);
+            // once clarified know whether to add if (bhOffpeakCounted) totalMthAll += get_day_tot(ed);
+        }
+        else // weekends
+        if ( dow === 0 || dow === 6 ) { // ignore if pre July 24
+            if (fdld.weekendsCountOffpeak) {
+                totalMthAll += get_day_tot(ed);
+                l("Weekend counts as offpeak: " + get_day_tot(ed));
             }
+        }
+        else
+        {
+            let dayPeakTot = get_peak_tot(ed);
+            let dayTot = get_day_tot(ed);
 
-            if (json.electricity) {
-                let ed = json.electricity.data;
-
-                if (ed instanceof Array == false) {
-                    daysFailed++;
-                    l("1/2 hourly data is not an array", ed);
-                    continue;
-                }
-                if (ed.length != 48) {
-                    l(dts, "1/2 hourly data length not 48: ", ed.length);
-                }
-                let e427Tot = 0, dayTot = 0;
-                for ( let hh=0; hh<ed.length; hh++) {
-                    dayTot+=ed[hh].consumption;
-                    let d2d = new Date(ed[hh].interval.start);
-                    let tsh = d2d.getHours();
-                    if (d2d.getTimezoneOffset() != 0) tsh++;
-                    if (tsh >= fdld.peakTimeStart && tsh < fdld.peakTimeEnd)
-                        e427Tot+=ed[hh].consumption;
-                }
-                total += dayTot; total427+=e427Tot;
-                l(`${pad(i)} day ${(100 * e427Tot / dayTot).toFixed(3)}%  [${e427Tot.toFixed(3)}/${dayTot.toFixed(3)}]`);
-                if (json.electricity.next !== true)
-                    break;
-            } else l("Nooo for " + dts);
+            totalMthAll += dayTot;
+            totalMthPeak+= dayPeakTot;
+            if (dayTot > 0.0)
+                l(`${pad(i)} day ${(100 * dayPeakTot / dayTot).toFixed(3)}%  [${dayPeakTot.toFixed(3)}/${dayTot.toFixed(3)}]`);
         }
     }
-    let mPercent = total > 0 ? (total427/total * 100).toFixed(2) + "%": "Not enough data yet...";
-    let lm = `TOTAL = ${mPercent}  [${total427.toFixed(3)} / ${total.toFixed(3)}]kWh - bank holidays: ${bhDays} `+bhShow.join(", ");
+
+    let mPercent = totalMthAll > 0 ? (totalMthPeak / totalMthAll * 100).toFixed(2) + "%": "Not enough data yet...";
+    let lm = `TOTAL = ${mPercent}  [${totalMthPeak.toFixed(3)} / ${totalMthAll.toFixed(3)}]kWh - bank holidays: ${bhDays} `+bhShow.join(", ");
     l(lm);l();
     o(lm); o("&nbsp;");
 }
@@ -130,16 +170,18 @@ function firstday_lastday(mthOffset = 0) {
     let last = new Date(date.getFullYear(), date.getMonth() - mthOffset + 1, 0);
 
     let [peakTimeStart, peakTimeEnd] = first >= new Date(2024,3) ? [18,21] : [16,19];
+    // from July 2024 weekends count as offpeak
+    let weekendsCountOffpeak = first >= new Date(2024, 7);
 
-    let p =  {
-        fdom: first.getDay(),
-        ldom: last.getDate(),
+    return  {
+        firstDayOfMonth: first.getDay(),
+        lastDayOfMonth: last.getDate(),
         month: first.getMonth() + 1,
         mthName: first.toLocaleString('default', { month: 'long' }), year: first.getFullYear(),
         peakTimeStart,
-        peakTimeEnd
+        peakTimeEnd,
+        weekendsCountOffpeak
     }
-    return p;
 }
 
 function set_acct_num(){
