@@ -7,7 +7,7 @@ Note that you can't get calculations earlier than June 23 or later than November
 To use any of these calculators copy the text and **paste that into a browser bookmark**, sign into your Ovo account and then click the bookmark.
 
 The monthly calculator bookmarklet text file at 
-[Two click monthly calculator](https://github.com/Tron-Burgundy/Ovo-Power-Move-Calculator/blob/main/ovo-FAST-calc-bookmarklet.txt)
+[Two click monthly calculator](https://github.com/Tron-Burgundy/Ovo-Power-Move-Calculator/blob/main/ovo-TWO-CLICK-monthly-calc-bookmarklet.txt)
 will get up to date bank holiday information but the above version is a better alternative for now.
 
 To use it sign into your Ovo account, click the bookmark, wait a sec then click it again.
