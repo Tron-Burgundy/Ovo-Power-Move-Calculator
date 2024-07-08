@@ -171,7 +171,7 @@ function firstday_lastday(mthOffset = 0) {
 
     let [peakTimeStart, peakTimeEnd] = first >= new Date(2024,3) ? [18,21] : [16,19];
     // from July 2024 weekends count as offpeak
-    let weekendsCountOffpeak = first >= new Date(2024, 7);
+    let weekendsCountOffpeak = first >= new Date(2024, 6); // 0 = Jan
 
     return  {
         firstDayOfMonth: first.getDay(),
