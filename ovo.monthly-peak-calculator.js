@@ -1,15 +1,15 @@
 /*  "One click" version of the script that has baked in bank holiday data
 
-    July 2024 Update as weekends count as off peak
+    Oct 2024 Update hours 16,19 and weekends count as off peak
 
-    Bank holiday data good for 2024 up to DEC 23rd
+    Bank holiday data good for 2024 up to end of December 2024
 */
 "use strict"
 {
 let zone = "england-and-wales";// scotland northern-ireland
 const MONTHS_TO_CALC = 4;   // how far to go back.  Don't go back earlier than 2023-06-01
     // dates useful to December 24.  I'll have to edit by then for the next set of peak hours
-let bhdates = {"2024-01-01":"New Year’s Day","2024-03-29":"Good Friday","2024-04-01":"Easter Monday","2024-05-06":"Early May bank holiday","2024-05-27":"Spring bank holiday","2024-08-26":"Summer bank holiday"};
+let bhdates = {"2024-04-01":"Easter Monday","2024-05-06":"Early May bank holiday","2024-05-27":"Spring bank holiday","2024-08-26":"Summer bank holiday", "2024-12-25":"Christmas Day", "2024-12-26":"Boxing Day"};
 
 let API_URL = "https://smartpaymapi.ovoenergy.com/usage/api/half-hourly/";
 const OVO_RETURN_URL    = "https://account.ovoenergy.com/usage?fuel=electricity";
@@ -111,7 +111,6 @@ async function main(monthsInPast = 0) {
         let json = await data.json();
             // so far next=false occurs on pages with an empty data=[] array for electricity
         dataContinues = json?.electricity?.next ?? false;
-        if (!dataContinues) l("DATA ENDS for the month " + dateToString);
 
         if (! json.electricity) {
             l("No electricity data for " + dateToString);
@@ -155,6 +154,8 @@ async function main(monthsInPast = 0) {
             if (dayTot > 0.0)
                 l(`${pad(i)} day ${(100 * dayPeakTot / dayTot).toFixed(3)}%  [${dayPeakTot.toFixed(3)}/${dayTot.toFixed(3)}]`);
         }
+
+        if (!dataContinues) l("DATA ENDS for the month " + dateToString);
     }
 
     let mPercent = totalMthAll > 0 ? (totalMthPeak / totalMthAll * 100).toFixed(2) + "%": "Not enough data yet...";
@@ -163,15 +164,28 @@ async function main(monthsInPast = 0) {
     o(lm); o("&nbsp;");
 }
 
+// oct 24 back to 16,19 but weekends count
+
 function firstday_lastday(mthOffset = 0) {
     let date = new Date();
         // note zero based, 3 is April
     let first = new Date(date.getFullYear(), date.getMonth() - mthOffset, 1);
     let last = new Date(date.getFullYear(), date.getMonth() - mthOffset + 1, 0);
 
-    let [peakTimeStart, peakTimeEnd] = first >= new Date(2024,3) ? [18,21] : [16,19];
+    //let [peakTimeStart, peakTimeEnd] = first >= new Date(2024,3) ? [18,21] : [16,19];
+     // first >= new Date(2024,3) ? [18,21] : [16,19];
+
+     let [peakTimeStart, peakTimeEnd] =
+        first >= new Date(2024, 9) ? // oct
+            [16,19] :
+        first >= new Date(2024, 3) ? // apr
+            [18,21] :
+        [16,19];
+
+
     // from July 2024 weekends count as offpeak
-    let weekendsCountOffpeak = first >= new Date(2024, 6); // 0 = Jan
+    let weekendsCountOffpeak = first >= new Date(2024, 6);// zero based
+    //weekendsCountOffpeak = false;
 
     return  {
         firstDayOfMonth: first.getDay(),
