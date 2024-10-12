@@ -2,7 +2,7 @@
 
 A one-click version of the [Monthly peak usage calculator bookmark](https://github.com/Tron-Burgundy/Ovo-Power-Move-Calculator/blob/main/ovo-ONE-CLICK-monthly-calc-bookmarklet.txt) is linked to here that has bank holiday info baked in.
 
-Note that you can't get calculations earlier than June 23 or later than November 2024.  I'll more than likely update it before then to account for peak time changes.
+Note that you can't get calculations earlier than June 24 or later than 1st Jan 2025.  I'll update as changes happen.
 
 To use any of these calculators copy the text and **paste that into a browser bookmark**, sign into your Ovo account and then click the bookmark.
 
