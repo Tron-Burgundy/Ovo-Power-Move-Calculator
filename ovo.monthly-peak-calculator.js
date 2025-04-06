@@ -1,12 +1,15 @@
-/*  "One click" version of the script that has baked in bank holiday data
+/*  APR 25 UPDATE
+    "One click" version of the script that has baked in bank holiday data
+    Bank holiday data good from October 24 until new year's day '26
 
-    October 2024 Update as hour shift.  Weekends count as off peak
-    Bank holiday data good for end of 2024
+    NOTE TO SELF: Ovo has cross origin blocking of including remote scripts.  Shame as
+    I could make a version of this that would never need updating by the user.
+
+    https://codebeautify.org/minify-js for minify
 */
 "use strict"
-{
-    // one step BH
-    function BH_setup() {
+{   // the only function that needs to change between this and the 2 click version
+     function bank_holiday_init() {
         const OVO_RETURN_URL = "https://account.ovoenergy.com/usage?fuel=electricity";
 
         if (window.location.host !== "account.ovoenergy.com") {
@@ -14,15 +17,54 @@
             return;
         }
 
-        bhdates = { "2024-04-01": "Easter Monday", "2024-05-06": "Early May bank holiday", "2024-05-27": "Spring bank holiday", "2024-08-26": "Summer bank holiday", "2024-12-25": "Christmas Day", "2024-12-26": "Boxing Day" };
+        bhdates = {
+            "2024-12-25": "Christmas Day",
+            "2024-12-26": "Boxing Day",
+            "2025-01-01": "New Year's Day",
+            "2025-04-18": "Good Friday",
+            "2025-04-21": "Easter Monday",
+            "2025-05-05": "Early May bank holiday",
+            "2025-05-26": "Spring bank holiday",
+            "2025-08-25": "Summer bank holiday",
+            "2025-12-25": "Christmas Day",
+            "2025-12-26": "Boxing Day",
+            "2026-01-01": "New Year's Day"
+        }
     }
 
     ////////////////////////////////////////////////////////////////
     ///////////////////// COMMON CODE///////////////////////////////
     ////////////////////////////////////////////////////////////////
 
-    let zone = "england-and-wales";// scotland northern-ireland
-    const MONTHS_TO_CALC = 4;   // how far to go back.  Don't go back earlier than 2023-06-01
+    function peak_hours(firstDayOfMonth) {
+        let [peakTimeStart, peakTimeEnd] = [16, 19]; // default
+        let weekendsCountOffpeak = false;
+            // when adding new dates put newer dates at the top or add between date values remembering months start at zero.
+            // e.g. firstDayOfMonth >= new Date(2025, 1) && firstDayOfMonth < new Date(2025, 4)
+        switch (true) {
+            case firstDayOfMonth >= new Date(2025, 1): // feb 25 and onward
+            [peakTimeStart, peakTimeEnd] = [17, 19];
+            break;
+
+            case firstDayOfMonth >= new Date(2024, 9): // oct
+            [peakTimeStart, peakTimeEnd] = [16, 19];
+            break;
+
+            case firstDayOfMonth >= new Date(2024, 3): // apr
+            [peakTimeStart, peakTimeEnd] = [18, 21];
+            break;
+        }
+            // Weekends count offpeak?  rules as for dates above
+        switch(true) {
+            case firstDayOfMonth >= new Date(2024, 6): // and an && < some other date when then rules change
+                weekendsCountOffpeak = true; break;
+        }
+
+        return {peakTimeStart, peakTimeEnd, weekendsCountOffpeak}
+    }
+
+    //let zone = "england-and-wales";// can be scotland and northern-ireland - not used here but is in the other version so don't remove it
+    const MONTHS_TO_CALC = 4;   // how far to go back.  Don't go too far back as the data is not available for all months
 
     let API_URL = "https://smartpaymapi.ovoenergy.com/usage/api/half-hourly/";
 
@@ -36,8 +78,10 @@
     let spx = 0;    // spinner on/off state
     let xDiv, acctid;   // spinner div
 
+    // self initialising function to run the script
+
     (async () => {
-        if (false == await BH_setup())
+        if (false == await bank_holiday_init())
             return;
 
         setup_divs();
@@ -67,9 +111,7 @@
         return dayTot;
     }
 
-
     /* The calculator for each month */
-
 
     async function main(monthsInPast = 0) {
         let fdld = firstday_lastday(monthsInPast);
@@ -182,17 +224,7 @@
         let first = new Date(date.getFullYear(), date.getMonth() - mthOffset, 1);
         let last = new Date(date.getFullYear(), date.getMonth() - mthOffset + 1, 0);
 
-        let [peakTimeStart, peakTimeEnd] =
-            first >= new Date(2024, 9) ? // oct
-                [16, 19] :
-                first >= new Date(2024, 3) ? // apr
-                    [18, 21] :
-                    [16, 19];
-
-
-        // from July 2024 weekends count as offpeak
-        let weekendsCountOffpeak = first >= new Date(2024, 6);// zero based
-        //weekendsCountOffpeak = false;
+        let {peakTimeStart, peakTimeEnd, weekendsCountOffpeak} = peak_hours(first);
 
         return {
             firstDayOfMonth: first.getDay(),
@@ -216,7 +248,7 @@
         }
         return false;
     }
-
+        // Simple output adds to the messages div
     function o() {
         for (let q of arguments) {
             let nd = document.createElement("div"); nd.innerHTML = q;
