@@ -7,68 +7,78 @@
 "use strict"
 {
 let REGION = "england-and-wales";// scotland northern-ireland
-    // 2 Step Bank Holiday setup
+let bhdates = {};   // globa and is side-effect loaded for programming bad-practice reasons
+const MONTHS_TO_CALC = 4;   // how far to go back.  Don't go too far back as the data is not available for all months
 
-async function bank_holiday_init() {
-    const OVO_RETURN_URL    = "https://account.ovoenergy.com/usage?fuel=electricity";
+// 2 Step Bank Holiday setup
+
+async function bank_holiday_check() {
     const BH_SITE_PROXY     = "https://twitch-tools.glitch.me/ovo.html?months="+MONTHS_TO_CALC;
-    const BH_DATA_URL       = "https://www.gov.uk/bank-holidays.json";
-        // Not at ovo, see if we can get data
 
-    let bh = await fetch_gov_bank_holidays();
+    bhdates = dates_from_url_params() || await fetch_gov_bank_holidays(MONTHS_TO_CALC, REGION);
 
-    if (bh) {
-        if (window.location.host == "account.ovoenergy.com")
-            return true;
+    if (bhdates && window.location.host == "account.ovoenergy.com") {
+        return true;
+    }
+        // redirect to remote if no data available
+    window.location.href = BH_SITE_PROXY;
+    return false;
+}
 
-            // got the data, return home with it!
-        let redir = OVO_RETURN_URL + "&bh=" + encodeURIComponent(JSON.stringify(bhdates));
-        window.location.href = redir;
+/*
+    Returns obj of bank holidays from fetched json
+*/
+
+async function fetch_gov_bank_holidays(months2Calc = 4, region = "england-and-wales") {
+    const BH_JSON_URL = "https://www.gov.uk/bank-holidays.json";
+
+    let dateHi = new Date();
+    let dateLow = new Date();
+    dateLow.setMonth( dateLow.getMonth() - months2Calc - 1 );
+    dateHi.setMonth( dateHi.getMonth() + 1 );
+
+    let dates = {};
+
+    try {
+        let bhr = await fetch(BH_JSON_URL);
+
+        if (bhr.ok) {
+            let bh = await bhr.json();
+            for (let d of bh[region].events) {
+                let dobh = new Date(d.date);
+                if (dobh > dateLow && dobh < dateHi)
+                    dates[d.date] = d.title;
+            }
+            // l("got bank holidays from JSON")
+            return dates;
+        }
+    } catch (e) {
+        //o("<div>&nbsp;</div><b>Can't process bank holidays directly...</b>");
+        console.log("ERROR fetching: ", e);
+    }
+
+    return false
+}
+
+    // fills global bhdates[] with data from url params returns bool
+
+function dates_from_url_params() {
+    let qs = new window.URLSearchParams( window.location.search );
+    let param = qs.get("bh");
+
+    if (param === null)
+        return false;
+
+        // are bank holidays in the thing
+    try {
+        return JSON.parse(param);
+        // o("SUCCESS: Got bank holidays from URL params.");
+    } catch (error) {
+        o("ERROR getting the bank holidays from the URL");
         return false;
     }
 
-    window.location.href = BH_SITE_PROXY;
-    return false;
-
-    async function fetch_gov_bank_holidays() {
-        let dateHi = new Date();
-        let dateLow = new Date();
-        dateLow.setMonth( dateLow.getMonth() - MONTHS_TO_CALC - 1 );
-        dateHi.setMonth( dateHi.getMonth() + 1 );
-
-        try {
-            let bhr = await fetch(BH_DATA_URL);
-            if (bhr.ok) {
-                let bh = await bhr.json();
-                for (let d of bh[REGION].events) {
-                    let dobh = new Date(d.date);
-                    if (dobh > dateLow && dobh < dateHi)
-                        bhdates[d.date] = d.title;
-                }
-                l("got bank holidays")
-
-                return true;
-            }
-        } catch (e) {
-            //o("<div>&nbsp;</div><b>Can't process bank holidays directly...</b>");
-        }
-
-        let qs = new window.URLSearchParams( window.location.search );
-        let token = qs.get("bh");
-
-        if (token === null) return false;
-        // are bank holidays in the thing
-        try {
-            bhdates = JSON.parse(token);
-            o("SUCCESS: Got bank holidays from the URL.");
-        } catch (error) {
-            o("ERROR getting the bank holidays from the URL");
-            return false;
-        }
-
-        //o("&nbsp;");
-        return true;
-    }
+    return true;
 }
 
 ////////////////////////////////////////////////////////////////
@@ -103,26 +113,23 @@ function peak_hours(firstDayOfMonth) {
     return {peakTimeStart, peakTimeEnd, weekendsCountOffpeak}
 }
 
-//let zone = "england-and-wales";// can be scotland and northern-ireland - not used here but is in the other version so don't remove it
-const MONTHS_TO_CALC = 4;   // how far to go back.  Don't go too far back as the data is not available for all months
-
 let API_URL = "https://smartpaymapi.ovoenergy.com/usage/api/half-hourly/";
 
 let l = console.log;
 let pad = a => ("0" + a).slice(-2);
 let gid = x => document.getElementById(x);
-let bhdates = {};
 
-let errLgin = x => o('[<a href="https://account.ovoenergy.com/">CLICK HERE to sign into your Ovo account</a>] <b>then click the bookmark again.</b>');
+
+let errLgin = x => o('[<a href="https://account.ovoenergy.com/">CLICK HERE to sign into your Ovo account</a>] <b>then click the bookmark again.</b><h2>Do not use private browsing</h2>');
 
 let spx = 0;    // spinner on/off state
 let xDiv, acctid;   // spinner div
 
 (async () => {
-    if (false == await bank_holiday_init())
-        return;
-
     setup_divs();
+
+    if (false == await bank_holiday_check())
+        return;
 
     if (!set_acct_num()) {
         errLgin();
@@ -295,7 +302,7 @@ function o() {
 }
 
 function setup_divs() {
-    document.body.innerHTML = '<div>Working: [<span id="X">+</span>]<p><div id="msgs"></div></div>';
+    document.body.innerHTML = '<div style="padding: 1em">Working: [<span id="X">+</span>]<p><div id="msgs"></div></div>';
     //mDiv=gid("msgs");
     xDiv = gid("X");
 }
