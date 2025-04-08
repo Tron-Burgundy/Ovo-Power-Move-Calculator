@@ -257,7 +257,7 @@
     }
 
     function setup_divs() {
-        document.body.innerHTML = '<div>Working: [<span id="X">+</span>]<p><div id="msgs"></div></div>';
+        document.body.innerHTML = '<div style="padding: 1em">Working: [<span id="X">+</span>]<p><div id="msgs"></div></div>';
         //mDiv=gid("msgs");
         xDiv = gid("X");
     }
